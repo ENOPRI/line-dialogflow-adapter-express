@@ -1,12 +1,19 @@
 import bodyParser from 'body-parser';
-import {config} from 'dotenv';
+import { config } from 'dotenv';
 import express from 'express';
-import {get} from 'lodash';
-import {Client} from '@line/bot-sdk';
+import { get } from 'lodash';
+import { Client } from '@line/bot-sdk';
 
-import {lineClientConfig, dialogflowClientConfig, firebaseConfig, chatbaseConfig, DEFAULT_PORT} from './config';
-import {DialogflowClient} from './dialogflow-client';
-import {EventHandler} from './event-handler';
+import {
+  lineClientConfig,
+  dialogflowClientConfig,
+  firebaseConfig,
+  chatbaseConfig,
+  DEFAULT_PORT,
+} from './config';
+
+import { DialogflowClient } from './dialogflow-client';
+import { EventHandler } from './event-handler';
 import * as firebase from 'firebase';
 
 config();
@@ -25,52 +32,47 @@ const webhookHandler = new EventHandler(lineClient, dialogflowClient);
 
 let contextsLoadedTimestamp = {};
 
-app.post('/', async(req, res) => {
-  const event = get(req, ['body', 'events', '0']);
-  const userId = get(event, ['source', 'userId']);
-  console.log(event);
+app.post('/', async (req, res) => {
+  // ✅ 5秒ルール対応のため、即時応答
+  res.status(200).send('OK');
 
-  /**
-   * Context Loading from Firebase
-   */
-  // Check if contexts is loaded within last 1 hour? (Speed up a response time.)
-  if (!contextsLoadedTimestamp[userId] || contextsLoadedTimestamp[userId].getTime() < new Date().getTime() - 1000 * 60 * 60) {
-    console.log("Load context");
-    //If not, load from firebase. (Take time)
-    let snapshot = await firebase
-      .database()
-      .ref('contexts/' + userId)
-      .once('value');
-    const contextsFromFirebase = (snapshot.val() && snapshot.val().contexts) || [];
-    //Create context in Dialogflow one-by-one
-    for (let i in contextsFromFirebase) {
-      await dialogflowClient.createContext(userId, contextsFromFirebase[i]);
+  try {
+    const event = get(req, ['body', 'events', '0']);
+    const userId = get(event, ['source', 'userId']);
+    console.log(event);
+
+    // FirebaseからContextをロード
+    if (
+      !contextsLoadedTimestamp[userId] ||
+      contextsLoadedTimestamp[userId].getTime() < new Date().getTime() - 1000 * 60 * 60
+    ) {
+      console.log('Load context from Firebase');
+      const snapshot = await firebase
+        .database()
+        .ref('contexts/' + userId)
+        .once('value');
+      const contextsFromFirebase = (snapshot.val() && snapshot.val().contexts) || [];
+
+      for (let i in contextsFromFirebase) {
+        await dialogflowClient.createContext(userId, contextsFromFirebase[i]);
+      }
+
+      contextsLoadedTimestamp[userId] = new Date();
     }
 
-    //Remember when the contexs is loaded from the firebase.
-    contextsLoadedTimestamp[userId] = new Date();
+    // LINEイベント処理
+    await webhookHandler.handleEvent(event);
 
+    // Contextを保存
+    const contexts = (await dialogflowClient.listContext(userId)).map((x) => ({
+      name: x.name,
+      lifespanCount: x.lifespanCount,
+    }));
+
+    await firebase.database().ref('contexts/' + userId).set(contexts);
+  } catch (err) {
+    console.error('Webhook internal error:', err);
   }
-  //Handle event as normal.
-  await webhookHandler.handleEvent(event);
-
-  /**
-     * Context Saving from Firebase
-     */
-
-  //Get the contexts from dialogflow
-  let contexts = await dialogflowClient.listContext(userId);
-  contexts = contexts.map((x) => ({"name": x.name, "lifespanCount": x.lifespanCount}));
-  console.log('contexts', contexts);
-
-  //Save it into Firebase for future.
-  firebase
-    .database()
-    .ref('contexts/' + userId)
-    .set(contexts);
-
-  res.send('');
 });
 
-app
-.listen(process.env.PORT || DEFAULT_PORT);
+app.listen(process.env.PORT || DEFAULT_PORT);
