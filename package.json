@@ -10,7 +10,7 @@
   "dependencies": {
     "@google/chatbase": "^1.1.2",
     "@line/bot-sdk": "^6.1.0",
-    "dialogflow": "^0.5.0",  // → 後々 @google-cloud/dialogflow に置き換え推奨
+    "dialogflow": "^0.5.0",
     "dotenv": "^6.0.0",
     "express": "^4.16.3",
     "firebase": "^9.23.0",
