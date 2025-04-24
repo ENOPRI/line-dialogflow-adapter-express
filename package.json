@@ -10,14 +10,14 @@
   "dependencies": {
     "@google/chatbase": "^1.1.2",
     "@line/bot-sdk": "^6.1.0",
-    "dialogflow": "^0.5.0",
+    "dialogflow": "^0.5.0",  // → 後々 @google-cloud/dialogflow に置き換え推奨
     "dotenv": "^6.0.0",
     "express": "^4.16.3",
     "firebase": "^9.23.0",
     "lodash": "^4.17.10"
   },
   "devDependencies": {
-    "ts-node": "^7.0.0",
+    "ts-node": "^10.9.1",
     "tslint": "^5.10.0",
     "tslint-config-airbnb-base": "^0.1.0",
     "typescript": "^5.3.3"
