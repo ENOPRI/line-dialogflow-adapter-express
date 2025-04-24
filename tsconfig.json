@@ -1,25 +1,12 @@
 {
   "compilerOptions": {
+    "target": "ES6",
     "module": "commonjs",
+    "rootDir": "./",
+    "outDir": "./dist",
     "esModuleInterop": true,
-    "target": "es6",
-    "noImplicitAny": false,
-    "forceConsistentCasingInFileNames": true,
-    "noImplicitReturns": true,
     "strict": true,
-    "noUnusedLocals": true,
-    "moduleResolution": "node",
-    "sourceMap": true,
-    "outDir": "dist",
-    "baseUrl": ".",
-    "paths": {
-      "*": [
-        "node_modules/*",
-        "src/types/*"
-      ]
-    }
+    "forceConsistentCasingInFileNames": true
   },
-  "include": [
-    "src/**/*"
-  ]
+  "include": ["*.ts", "**/*.ts"]
 }
