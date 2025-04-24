@@ -14,10 +14,14 @@ import {
 
 import { DialogflowClient } from './dialogflow-client';
 import { EventHandler } from './event-handler';
-import * as firebase from 'firebase';
+
+// ✅ Firebase v9 modular SDK に対応
+import { initializeApp } from 'firebase/app';
+import { getDatabase, ref, get, set } from 'firebase/database';
 
 config();
-firebase.initializeApp(firebaseConfig);
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getDatabase(firebaseApp);
 
 const app = express();
 app.use(bodyParser.json());
@@ -33,7 +37,6 @@ const webhookHandler = new EventHandler(lineClient, dialogflowClient);
 let contextsLoadedTimestamp = {};
 
 app.post('/', async (req, res) => {
-  // ✅ 5秒ルール対応のため、即時応答
   res.status(200).send('OK');
 
   try {
@@ -41,17 +44,14 @@ app.post('/', async (req, res) => {
     const userId = get(event, ['source', 'userId']);
     console.log(event);
 
-    // FirebaseからContextをロード
     if (
       !contextsLoadedTimestamp[userId] ||
       contextsLoadedTimestamp[userId].getTime() < new Date().getTime() - 1000 * 60 * 60
     ) {
       console.log('Load context from Firebase');
-      const snapshot = await firebase
-        .database()
-        .ref('contexts/' + userId)
-        .once('value');
-      const contextsFromFirebase = (snapshot.val() && snapshot.val().contexts) || [];
+
+      const snapshot = await get(ref(db, 'contexts/' + userId));
+      const contextsFromFirebase = (snapshot.exists() && snapshot.val().contexts) || [];
 
       for (let i in contextsFromFirebase) {
         await dialogflowClient.createContext(userId, contextsFromFirebase[i]);
@@ -60,16 +60,14 @@ app.post('/', async (req, res) => {
       contextsLoadedTimestamp[userId] = new Date();
     }
 
-    // LINEイベント処理
     await webhookHandler.handleEvent(event);
 
-    // Contextを保存
     const contexts = (await dialogflowClient.listContext(userId)).map((x) => ({
       name: x.name,
       lifespanCount: x.lifespanCount,
     }));
 
-    await firebase.database().ref('contexts/' + userId).set(contexts);
+    await set(ref(db, 'contexts/' + userId), { contexts });
   } catch (err) {
     console.error('Webhook internal error:', err);
   }
