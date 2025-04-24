@@ -2,9 +2,10 @@
   "name": "line-dialogflow-middleware",
   "version": "1.0.0",
   "description": "",
+  "main": "dist/main.js",
   "scripts": {
-    "start": "ts-node --transpileOnly ./src/main.ts",
-    "start-debug": "ts-node ./src/main.ts"
+    "build": "tsc",
+    "start": "node dist/main.js"
   },
   "dependencies": {
     "@google/chatbase": "^1.1.2",
@@ -19,6 +20,6 @@
     "ts-node": "^7.0.0",
     "tslint": "^5.10.0",
     "tslint-config-airbnb-base": "^0.1.0",
-    "typescript": "^2.9.2"
+    "typescript": "^5.3.3"
   }
 }
